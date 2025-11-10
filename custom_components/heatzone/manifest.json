@@ -1,0 +1,13 @@
+{
+  "domain": "heatzone",
+  "name": "HeatZone",
+  "version": "0.8.0",
+  "documentation": "https://example.com",
+  "dependencies": [],
+  "codeowners": ["@fpo"],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "integration_type": "hub",
+  "single_config_entry": true,
+  "requirements": ["paho-mqtt==2.1.0"]
+}

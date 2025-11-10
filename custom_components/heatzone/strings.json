@@ -1,0 +1,59 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HeatZone Hub einrichten",
+        "description": "Erstelle einen neuen MQTT Hub für deine Heizzonen",
+        "data": {
+          "name": "Name des Hubs",
+          "mqtt_host": "MQTT-Broker Adresse",
+          "mqtt_port": "MQTT-Port",
+          "mqtt_user": "Benutzername (optional)",
+          "mqtt_password": "Passwort (optional)"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "HeatZone Hub Verwaltung",
+        "menu_options": {
+          "add_device": "Gerät hinzufügen",
+          "manage_devices": "Geräte verwalten",
+          "mqtt_settings": "MQTT-Einstellungen"
+        }
+      },
+      "add_device": {
+        "title": "Gerät hinzufügen",
+        "description": "Füge eine neue Heizzone als Gerät hinzu",
+        "data": {
+          "name": "Name des Geräts"
+        }
+      },
+      "manage_devices": {
+        "title": "Geräte verwalten",
+        "description": "{info}",
+        "data": {
+          "zone": "Gerät zum Löschen auswählen"
+        }
+      },
+      "mqtt_settings": {
+        "title": "MQTT-Einstellungen",
+        "description": "MQTT-Verbindungseinstellungen des Hubs ändern",
+        "data": {
+          "mqtt_host": "MQTT-Broker Adresse",
+          "mqtt_port": "MQTT-Port",
+          "mqtt_user": "Benutzername",
+          "mqtt_password": "Passwort"
+        }
+      }
+    },
+    "error": {
+      "zone_exists": "Ein Gerät mit diesem Namen existiert bereits"
+    },
+    "abort": {
+      "no_devices": "Keine Geräte vorhanden"
+    }
+  }
+}
