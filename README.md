@@ -22,7 +22,7 @@ Heatzone has several devices in its integration with the following functions:
     - Global mode (When changed, all zones are set to the same mode. E.g. for holiday)
     - Boost duration in minutes - Specifies the duration of the boost. Applies equally to all zones.
     - Boost temperature - This temperature is set during the boost duration.
-<br/>
+
 2. Zone - The individual zones, e.g. living room, with the following settings:
     - Present = Defines whether this zone receives the temperature for absent.
     - Boost = When activated, runs as long as defined in the global settings.
