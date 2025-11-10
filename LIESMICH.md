@@ -95,7 +95,7 @@ Hier aber die eingentlichen subtopis:
 cd YOUR_HASS_CONFIG_DIRECTORY    # same place as configuration.yaml
 mkdir -p custom_components/heatzone
 cd custom_components/heatzone
-unzip heatzone-X.Y.T.zip
-mv heatzone-X.Y.Z/custom_components/heatzone/* .
+unzip heatzone-main.zip
+mv heatzone-main/custom_components/heatzone/* .
 ```
 
