@@ -2,7 +2,7 @@
   "domain": "heatzone",
   "name": "HeatZone",
   "version": "0.8.0",
-  "documentation": "https://example.com",
+  "documentation": "https://github.com/fpo/heatzone",
   "dependencies": [],
   "codeowners": ["@fpo"],
   "config_flow": true,
