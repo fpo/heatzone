@@ -83,7 +83,7 @@ Here are the actual subtopics:
 - Temp3 = Value for temperature 3
 - Temp4 = Value for temperature 4
 - TempAway = Value for temperature absent
-- Tempholiday = Value for temperature holiday
+- TempHoliday = Value for temperature holiday
 - Day1 - Day7 = JSON for the time-dependent settings in the following form:
 ([{"From":"0:00","To":"9:00","TempID":0},{"From":"9:00","To":"8:00","TempID":1}])
 
