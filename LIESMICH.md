@@ -22,7 +22,7 @@ Heatzone hat in seiner Integration mehrere Geräte mit folgenden Funktionen:
     - Globaler Modus (Steuert bei Änderung alle Zonen in den gleichen Modus. Z.Bsp. bei Urlaub)
     - Boostdauer in Minuten - Gibt die Dauer des Boost vor. Gilt für alle Zonen gleich.
     - Die Boosttemperatur - Diese Temparatur wird während der Boostdauer gesetzt.
-<br/>
+
 2. Zone - Die einzelnen Zonen z.Bsp. Wohnzimmer mit folgenden Einstellungen:
     - Anwesend = Definiert ob diese Zone die Temperatur für Abwesend erhällt.
     - Boost = Wenn aktiviert läuft dieser solange wie in den Globalen Einstellungen definiert.
