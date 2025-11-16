@@ -1,0 +1,142 @@
+{
+  "entity": {
+    "switch": {
+      "present": {
+        "name": "Present"
+      },
+      "boost": {
+        "name": "Boost"
+      }
+    },
+    "number": {
+      "boost_duration": {
+        "name": "Boost-Duration"
+      },
+      "boost_temp": {
+        "name": "Boost-Temp"
+      },
+      "manual_temp": {
+        "name": "Manual Temp"
+      },
+      "delay": {
+        "name": "Delay"
+      },
+      "priority": {
+        "name": "Priority"
+      } 
+    },
+    "text": {
+      "profile": {
+        "name": "Profile"
+      },
+      "status": {
+        "name": "Status"
+      }
+    },
+    "sensor": {
+      "target_temperature": {
+        "name": "Target Temperature"
+      },
+      "temperature_sensor": {
+        "name": "Sensor Temperature"
+      },
+      "humidity_sensor": {
+        "name": "Humidity"
+      },
+      "window_sensor": {
+        "name": "Window Sensor",
+        "state": {
+          "open": "Open",
+          "closed": "Closed",
+          "unknown": "Unknown"
+        }
+      }
+    },
+    "select": {
+      "global_mode": {
+        "name": "Modus",
+        "state": {
+          "off": "Off",
+          "profile": "Profile",
+          "manual": "Manual",
+          "holiday": "Holiday"
+        }
+      },
+      "mode": {
+        "name": "Modus",
+        "state": {
+          "off": "Off",
+          "profile": "Profile",
+          "manual": "Manual",
+          "holiday": "Holiday"
+        }
+      },
+      "humidity_sensor": {
+        "name": "Humididy Sensor"
+      },
+      "window_sensor": {
+        "name": "Window Sensor"
+      },
+      "temperature_sensor": {
+        "name": "Temperature Sensor"
+      },
+      "thermostat_sensor": {
+        "name": "Thermostat"
+      }
+    },
+    "binary_sensor": {
+      "window_sensor": {
+        "name": "Wondow Sensor",
+        "state": {
+          "on": "Open",
+          "off": "Closed"
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "MQTT Configuration",
+        "description": "Enter your MQTT connection details.",
+        "data": {
+          "mqtt_host": "MQTT Host",
+          "mqtt_port": "MQTT Port",
+          "mqtt_websocket_port": "MQTT WebSocket Port",
+          "mqtt_user": "MQTT Username",
+          "mqtt_password": "MQTT Password"
+        }
+      }
+    },
+    "error": {
+      "zone_exists": "Zone with this name already exists."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "menu_options": {
+          "add_zone": "Zone Add",
+          "mqtt_settings": "MQTT-Settings"
+        }
+      },
+      "add_zone": {
+        "title": "Zone Add",
+        "data": {
+          "name": "Zone Name"
+        }
+      },
+      "mqtt_settings": {
+        "title": "MQTT-Settings",
+        "data": {
+          "mqtt_host": "MQTT Host",
+          "mqtt_port": "MQTT Port",
+          "mqtt_websocket_port": "MQTT WebSocket Port",
+          "mqtt_user": "MQTT Username",
+          "mqtt_password": "MQTT Password"
+        }
+      }
+    }
+  }
+}
+

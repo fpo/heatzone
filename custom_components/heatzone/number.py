@@ -6,6 +6,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers import translation
 from homeassistant.const import UnitOfTemperature
 from homeassistant.helpers.entity import EntityCategory
 from .entity import ZoneEntityCore
@@ -31,6 +32,7 @@ async def async_setup_entry(hass, entry, async_add_entities: AddEntitiesCallback
         entities.append(ZoneManualTemperature(hass, entry, zone_id, zone_data))
         entities.append(ZoneDelay(hass, entry, zone_id, zone_data))
         entities.append(ZoneTargetTemperature(hass, entry, zone_id, zone_data))
+        entities.append(ZonePriority(hass, entry, zone_id, zone_data))
         
     _LOGGER.debug(
         f"Setting up {len(entities)} number entities for {len(zones)} zones"
@@ -115,6 +117,17 @@ class ZoneManualTemperature(ZoneNumberBase):
     _attr_native_max_value = 50.0
     _attr_native_step = 0.5
     _attr_default_value = 20.0
+    _attr_mode = NumberMode.SLIDER
+
+class ZonePriority(ZoneNumberBase):
+    """Priorität für eine Zone."""
+
+    _attr_name_suffix = "Priorität"
+    _attr_unique_suffix = "priority"
+    _attr_native_min_value = 0
+    _attr_native_max_value = 10
+    _attr_native_step = 1
+    _attr_default_value = 5
     _attr_mode = NumberMode.SLIDER
 
 class ZoneDelay(ZoneNumberBase):

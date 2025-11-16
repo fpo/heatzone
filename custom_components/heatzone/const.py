@@ -3,7 +3,7 @@ from enum import StrEnum
 DOMAIN = "heatzone"
 DEFAULT_NAME = "HeatZone"
 
-PLATFORMS = ["number", "switch", "select", "text", "sensor"] 
+PLATFORMS = ["number", "switch", "select", "text", "sensor", "binary_sensor"] 
 
 GLOBAL_DEVICE_NAME = "Global"
 GLOBAL_DEVICE_ID = "global"
@@ -21,16 +21,16 @@ MQTT_PASSWORD = "password"
 
 
 class HeaterMode(StrEnum):
-    OFF = "Aus"
-    MANUAL = "Manuell"
-    PROFIL = "Profil"
+    OFF = "off"
+    MANUAL = "manual"
+    PROFIL = "profile"
+    HOLIDAY = "holiday"
 
 class HeaterExtendedMode(StrEnum):
-    BOOST = "Boost"
-    OPEN = "Offen"
-    BYPASS = "Bypass"
-    AWAY = "Abwesend"
-    HOLIDAY = "Urlaub"
+    BOOST = "boost"
+    OPEN = "open"
+    BYPASS = "bypass"
+    AWAY = "away"
 
 HEATER_MODES = [mode.value for mode in HeaterMode]
 

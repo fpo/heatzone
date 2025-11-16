@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import logging
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers import translation
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from .entity import ZoneEntityCore
@@ -24,7 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     entities: list[SwitchEntity] = []
 
     for zone_id, zone_data in zones.items():
-        entities.append(ZoneActiveSwitch(hass, entry, zone_id, zone_data))
+        entities.append(ZonePresentSwitch(hass, entry, zone_id, zone_data))
         entities.append(ZoneBoostSwitch(hass, entry, zone_id, zone_data))
 
     _LOGGER.debug("Setting up %d switch entities for %d zones", len(entities), len(zones))
@@ -38,8 +39,6 @@ class ZoneSwitchBase(ZoneEntityCore, SwitchEntity):
     """Basisklasse für alle zonenbasierten Switch-Entities."""
 
     _attr_icon: str | None = None
-    _attr_unique_suffix: str = "switch"
-    _attr_name_suffix: str = "Schalter"
     _attr_is_on: bool = False
 
     @property
@@ -55,15 +54,15 @@ class ZoneSwitchBase(ZoneEntityCore, SwitchEntity):
             _LOGGER.debug(f"Restored {self.entity_id} to {self._attr_is_on}")
 
 # ---------------------------------------------------------------------------
-# Zonen-Aktiv-Schalter
+# Zonen-Present-Schalter
 # ---------------------------------------------------------------------------
 
-class ZoneActiveSwitch(ZoneSwitchBase):
-    """Schaltet eine Zone aktiv/inaktiv."""
+class ZonePresentSwitch(ZoneSwitchBase):
+    """Schaltet eine Zone auf An-/Abwesend."""
 
     _attr_icon = "mdi:radiator"
-    _attr_unique_suffix = "active"
-    _attr_name_suffix = "Aktiv"
+    _attr_unique_suffix = "present"
+    _attr_name_suffix = "Present"
 
     def __init__(self, hass, entry, zone_id, zone_data):
         super().__init__(hass, entry, zone_id, zone_data)
@@ -73,13 +72,13 @@ class ZoneActiveSwitch(ZoneSwitchBase):
         """Turn the switch on."""
         self._attr_is_on = True
         self.async_write_ha_state()
-        _LOGGER.info("[%s] Zone aktiviert", self._zone_id)
+        _LOGGER.info("[%s] Anwesend", self._zone_id)
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the switch off."""
         self._attr_is_on = False
         self.async_write_ha_state()
-        _LOGGER.info("[%s] Zone deaktiviert", self._zone_id)
+        _LOGGER.info("[%s] Abwesend", self._zone_id)
 
 # ---------------------------------------------------------------------------
 # Zonen-Boost-Schalter

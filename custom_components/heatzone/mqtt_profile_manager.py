@@ -19,6 +19,7 @@ class ProfileData:
         self.data = {}
         self.last_update = None
         self.last_access = datetime.now()
+        self.last_sent_temp: Optional[float] = None
     
     def update_subtopic(self, subtopic: str, value: str):
         """Aktualisiert einen Sub-Topic Wert."""
@@ -67,7 +68,7 @@ class ProfileManager:
         # Polling-Timer starten (alle 60 Sekunden)
         self._polling_unsub = async_track_time_interval(
             self.hass,
-            self._poll_and_update,
+            self.update_temps,
             timedelta(seconds=60)
         )
     
@@ -221,16 +222,8 @@ class ProfileManager:
         _LOGGER.info(f"Topic {topic}: Unsubscribed all sub-topics")
     
     def get_temp(self, topic: str, mode: str) -> float:
-        """
-        Berechnet die Soll-Temperatur für ein Topic und Modus.
+        """ Berechnet die Soll-Temperatur für ein Topic und Modus."""
         
-        Args:
-            topic: MQTT Topic
-            mode: Modus (Bypass, Profil, Abwesend, Urlaub, Offen, Aus, Manuell)
-        
-        Returns:
-            Soll-Temperatur in °C (TEMP_FALLBACK wenn nicht verfügbar)
-        """
         if topic not in self.profiles:
             _LOGGER.warning(f"Topic {topic}: No profile loaded")
             return TEMP_FALLBACK
@@ -242,29 +235,29 @@ class ProfileManager:
             _LOGGER.warning(f"Topic {topic}: Profile incomplete")
             return TEMP_FALLBACK
         
-        if mode == "Bypass":
+        if mode == HeaterExtendedMode.BYPASS.value:
             return TEMP_FALLBACK
         
-        if mode in ("Aus", "Offen"):
-            return OFF_TEMP
+        if mode in (HeaterMode.OFF.value, HeaterExtendedMode.OPEN.value):
+            return TEMP_OFF
         
-        if mode == "Manuell":
+        if mode == HeaterMode.MANUAL.value:
             # Bei Manuell wird die Temperatur nicht vom Profil bestimmt
             return TEMP_FALLBACK
         
-        if mode == "Abwesend":
+        if mode == HeaterExtendedMode.AWAY.value:
             try:
                 return float(profile.data.get("TempAway", TEMP_FALLBACK))
             except (ValueError, TypeError):
                 return TEMP_FALLBACK
         
-        if mode == "Urlaub":
+        if mode == HeaterMode.HOLIDAY.value:
             try:
                 return float(profile.data.get("TempHoliday", TEMP_FALLBACK))
             except (ValueError, TypeError):
                 return TEMP_FALLBACK
         
-        if mode == "Profil":
+        if mode == HeaterMode.PROFIL.value:
             return self._calculate_profile_temp(profile)
         
         _LOGGER.warning(f"Topic {topic}: Unknown mode {mode}")
@@ -291,7 +284,7 @@ class ProfileManager:
         entity_mapping = {
             "mode": f"select.{zone_id}_mode",
             "profile": f"text.{zone_id}_profile",
-            "enabled": f"switch.{zone_id}_aktiv",
+            "present": f"switch.{zone_id}_present",
         }
      
         entity_id = entity_mapping.get(entity_type)
@@ -305,31 +298,40 @@ class ProfileManager:
         return None
     
     async def _update_target_temp_sensor(self, zone_id: str, temp: float):
-        """
-        Aktualisiert den Target Temperature Sensor.
-        Wird nur bei Profil-Modus aufgerufen.
-        """
+        """ Aktualisiert den Target Temperature Sensor nur bei Änderung. """
+        
+        # Hole das Profil für diese Zone
+        topic = self.get_topic(zone_id)
+        if not topic or topic not in self.profiles:
+            _LOGGER.warning(f"Zone {zone_id}: No profile found for update")
+            return
+        
+        profile = self.profiles[topic]
+        
+        # Prüfe ob sich der Wert geändert hat
+        if profile.last_sent_temp is not None and abs(profile.last_sent_temp - temp) < 0.1:
+            _LOGGER.debug(f"Zone {zone_id}: Temp unchanged ({temp}°C), skipping update")
+            return
+        
         entity_id = f"number.{zone_id}_target_temp"
         
         try:
             await self.hass.services.async_call("number", "set_value",
-                service_data={ "value": temp },
-                target={ "entity_id": entity_id },
-                )
+                service_data={"value": temp},
+                target={"entity_id": entity_id},
+            )
+            profile.last_sent_temp = temp
+            _LOGGER.debug(f"Zone {zone_id}: Updated target temp to {temp}°C")
         except Exception as e:
-            _LOGGER.error(f"Fehler Service Call für Set-Temp '{entity_id} mit {value}': {e}")
-    
+            _LOGGER.error(f"Fehler Service Call für Set-Temp '{entity_id}' mit {temp}: {e}")
+        
     # ANCHOR - Poll
-    async def _poll_and_update(self, now=None):
-        """
-        Pollt alle 60 Sekunden:
-        1. Lädt Profile für verwendete Topics
-        2. Aktualisiert Soll-Temperaturen für Profil-Modus
-        3. Cleanup veralteter Profile
-        """
+    async def update_temps(self, now=None):
+        """ Pollt und aktualisiert alle Zonen."""
+
         zone_ids = self._get_zone_ids()
         
-        _LOGGER.info(f"Poller");
+        _LOGGER.debug(f"Poller");
         
         # Sammle alle verwendeten Topics
         used_topics = set()
@@ -338,17 +340,19 @@ class ProfileManager:
             if topic and topic not in ("unknown", "unavailable", ""):
                 used_topics.add(topic)
         
-        # 1. Profile für verwendete Topics laden
+        # Profile für verwendete Topics laden
         for topic in used_topics:
             if topic not in self.profiles:
                 _LOGGER.info(f"Loading profile for new topic: {topic}")
                 await self.add_profile(topic)
         
-        # 2. Soll-Temperaturen berechnen für Zonen im Profil-Modus
+        # Soll-Temperaturen berechnen für Zonen im Profil-Modus
         for zone_id in zone_ids:
             # Hole Modus aus Entity State
             mode = self._get_entity_state(zone_id, "mode")
-            if not mode or mode == "Manuell":
+            present = self._get_entity_state(zone_id, "present")
+            
+            if not mode or mode == HeaterMode.MANUAL.value:
                 # Bei Manuell bestimmt der Benutzer die Temperatur selbst
                 continue
             
@@ -357,21 +361,18 @@ class ProfileManager:
             if not topic or topic in ("unknown", "unavailable", ""):
                 continue
             
-            # Hole enabled State
-            enabled = self._get_entity_state(zone_id, "enabled")
-            if enabled == "off":
-                _LOGGER.debug(f"Zone {zone_id} is disabled, skipping")
-                continue
+            if present == "off": 
+                mode = HeaterExtendedMode.AWAY.value
             
             # Berechne Soll-Temperatur aus Profil
             soll_temp = self.get_temp(topic, mode)
             
             _LOGGER.debug(f"Zone {zone_id}: Calculated temp={soll_temp}°C (topic={topic}, mode={mode})")
             
-            # Optional: Update eines eigenen Profil-Temperatur Sensors
+            # update Target Temperature Sensor
             await self._update_target_temp_sensor(zone_id, soll_temp)
         
-        # 3. Cleanup veralteter Profile (nicht mehr verwendet seit >10 Minuten)
+        # Cleanup veralteter Profile (nicht mehr verwendet seit >10 Minuten)
         for topic in list(self.profiles.keys()):
             if topic not in used_topics:
                 profile = self.profiles[topic]

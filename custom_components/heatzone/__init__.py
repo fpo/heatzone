@@ -37,14 +37,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "zones": zones,
     }
     
+    # Profile Manager laden aber noch nicht starten
+    profile_manager = ProfileManager(hass, entry)
+    hass.data[DOMAIN][entry.entry_id]["profile_manager"] = profile_manager
+    
     # Plattformen laden
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
     # Profile Manager starten
-    profile_manager = ProfileManager(hass, entry)
     await profile_manager.start()
+
     
-    hass.data[DOMAIN][entry.entry_id]["profile_manager"] = profile_manager
+    # Service registrieren für manuelles Update
+    async def handle_force_update(call):
+        """Manuelles Update der Temperaturen triggern."""
+        _LOGGER.info("Manual temperature update triggered via service")
+        await profile_manager.update_temps()
+    
+    hass.services.async_register(
+        DOMAIN, 
+        "force_update",
+        handle_force_update
+    )
     
     # Update Listener für Options-Änderungen
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -59,9 +73,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if manager:
         await manager.stop()
     
+    # Service entfernen
+    hass.services.async_remove(DOMAIN, "force_update")
+    
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
+        
     return unload_ok
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

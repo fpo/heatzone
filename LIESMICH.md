@@ -31,6 +31,7 @@ Heatzone hat in seiner Integration mehrere Geräte mit folgenden Funktionen:
     - Manuelle Temperatur = Definition einer Temperatur für den manuellen Modus.
     - Profil = Der Profilname des Profils welches für diese Zone verwendet werden soll.
     (siehe auch Profildefinition mqtt - Dies ist gleichzeitig der subtopic des Profils)
+    - Priorität (Nur wichtig für Heizungssteuerung - siehe Heizungssteuerung)
     - Temperatursensor = Auswahl einer Entität für die Ist-Temperatur
     - Thermostat = Der Thermostat der gesteuert werden soll.
     - Verzögerung = Die Zeit in der keine Änderung passieren soll wenn der Fensterkontakt offen ist.
@@ -99,3 +100,27 @@ unzip heatzone-main.zip
 mv heatzone-main/custom_components/heatzone/* .
 ```
 
+## Thermostate
+
+Aktuell werden der Zeit unterstützt:
+
++ Aqara E1 
++ Homematic (Externer Temp-Sensor nicht möglich!)
+
+(Laßt gerne Informationen hier welche ihr und wie unterstützt haben wollt)
+
+Ansonsten kann auch ein unbekannter Thermostat mit dieser Integration genutzt
+werden, indem ihr eine Automation erstellt die die externe Temperatur an
+den Thermostaten überträgt. Ansonsten Zieltemperatur wird auch ohne
+direkte Unterstützung übertragen.
+
+## Heizungssteuerung
+
+Die Heizungssteuerung ist der Zeit noch in der Testphase. Mein Ziel war und 
+ist es, eine Vaillant Gastherme darüber zu steuern. Ich fand es immer recht
+unkomfortablel das über das Steuergerät zu machen. Hinzu kam das ich mit
+der Standrdlösung von Vaillant nur einen Referenzpunkt habe (nämlich das 
+Wohnzimmer). Ziel ist es also eine möglichst komfortable Steuerung mit 
+Wochenprofilen zu haben die eine zusätzliche Priorisierung der Heizzonen 
+und somit auch eine Verschiebung des Referenzpunktes zuläßt. 
+Dafür dient die Einstellung Priorität.

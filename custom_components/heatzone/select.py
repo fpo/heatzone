@@ -8,6 +8,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback, Event
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers import translation
+from homeassistant.helpers.event import async_call_later
 from homeassistant.const import EVENT_STATE_CHANGED
 from .entity import ZoneEntityCore
 from .const import *
@@ -57,7 +59,10 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
     @property
     def extra_state_attributes(self) -> dict:
         """Expose entity mapping as attribute."""
-        return {"entity_map": self._entity_map}
+        return {
+            "entity_map": self._entity_map, 
+            "selected_entity_id": self.selected_entity_id 
+            }
 
     @property
     def current_option(self) -> str | None:
@@ -89,6 +94,27 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
         # Optionen initial laden (und Default anwenden)
         await self._load_options()
 
+        # Verzögerter Reload nach Startup - unterschiedliche Delays je nach Domain
+        delay_map = {
+            "climate": 10,      # Climate-Entities brauchen länger
+            "sensor": 3,       # Sensoren sind meist schneller
+            "binary_sensor": 3 # Binary Sensoren auch schnell
+        }
+        
+        delay = delay_map.get(self._domain_filter, 3)  # Default: 3 Sekunden
+        
+        async def delayed_reload(_now):
+            """Reload options after other entities are fully loaded."""
+            _LOGGER.debug(
+                "[%s/%s] Running delayed options reload (after %d seconds)",
+                getattr(self, "_zone_name", "Global"),
+                self.__class__.__name__,
+                delay,
+            )
+            await self._load_options()
+        
+        async_call_later(self.hass, delay, delayed_reload)
+
         # Listener für Änderungen in anderen Entities aktivieren
         @callback
         def _state_changed_listener(event: Event) -> None:
@@ -102,13 +128,6 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
         self._state_listener_unsubscribe = self.hass.bus.async_listen(
             "state_changed", _state_changed_listener
         )
-
-    async def async_will_remove_from_hass(self) -> None:
-        """Cleanup on removal."""
-        await super().async_will_remove_from_hass()
-        if self._state_listener_unsubscribe:
-            self._state_listener_unsubscribe()
-            self._state_listener_unsubscribe = None
 
     async def _async_reload_options(self) -> None:
         """Reload options asynchronously."""
@@ -200,6 +219,7 @@ class GlobalModeSelect(ZoneSelectBase):
     _attr_options = HEATER_MODES
     _attr_default_value = HeaterMode.OFF.value
 
+
 # ---------------------------------------------------------------------------
 # Zone Selects
 # ---------------------------------------------------------------------------
@@ -223,7 +243,7 @@ class ZoneWindowSelect(ZoneSelectBase):
     _attr_icon = "mdi:window-open-variant"
     _domain_filter = "binary_sensor"
     _device_classes = ("window", "door", "opening")
-    _attr_name_suffix = "Fensterkontakt"
+    _attr_name_suffix = "Window contact"
     _attr_unique_suffix = "window_sensor"
 
 class ZoneTemperatureSelect(ZoneSelectBase):
@@ -232,7 +252,7 @@ class ZoneTemperatureSelect(ZoneSelectBase):
     _attr_icon = "mdi:thermometer"
     _domain_filter = "sensor"
     _device_classes = ("temperature",)
-    _attr_name_suffix = "Temperatursensor"
+    _attr_name_suffix = "Temperature sensor"
     _attr_unique_suffix = "temperature_sensor"
 
 class ZoneHumiditySelect(ZoneSelectBase):
@@ -241,7 +261,7 @@ class ZoneHumiditySelect(ZoneSelectBase):
     _attr_icon = "mdi:water-percent"
     _domain_filter = "sensor"
     _device_classes = ("humidity",)
-    _attr_name_suffix = "Feuchtigkeitssensor"
+    _attr_name_suffix = "Humidy sensor"
     _attr_unique_suffix = "humidity_sensor"
     
 class ZoneThermostatSelect(ZoneSelectBase):

@@ -20,7 +20,7 @@ class HeatzoneConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_create_entry(
                 title=user_input.get("name", "HeatZone"),
                 data={
-                    "name": user_input.get("name", "HeatZone"),
+                    "name": "HeatZone",
                     "mqtt_host": user_input.get("mqtt_host", MQTT_HOST),
                     "mqtt_port": user_input.get("mqtt_port", MQTT_PORT),
                     "mqtt_websocket_port": user_input.get("mqtt_websocket_port", MQTT_WEBSOCKET_PORT),
@@ -33,7 +33,6 @@ class HeatzoneConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         schema = vol.Schema({
-            vol.Required("name", default=DEFAULT_NAME): str,
             vol.Required("mqtt_host", default=MQTT_HOST): str,
             vol.Optional("mqtt_port", default=MQTT_PORT): int,
             vol.Optional("mqtt_websocket_port", default=MQTT_WEBSOCKET_PORT): int,
@@ -48,23 +47,18 @@ class HeatzoneConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         """Options flow für Hub-Verwaltung."""
-        return HeatzoneOptionsFlow(config_entry)
+        return HeatzoneOptionsFlow()
 
 
 class HeatzoneOptionsFlow(config_entries.OptionsFlow):
     """Options flow für Hub: MQTT-Einstellungen und Geräte hinzufügen."""
     
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
-
     async def async_step_init(self, user_input=None):
         """Hauptmenü."""
         return self.async_show_menu(
             step_id="init",
-            menu_options={
-                "add_zone": "Zone hinzufügen",
-                "mqtt_settings": "MQTT-Einstellungen"
-            }
+            # menu_options=["add_zone", "mqtt_settings" ]
+            menu_options={"add_zone": "Neue Zone hinzufügen", "mqtt_settings": "MQTT-Einstellungen bearbeiten"}
         )
     
     async def async_step_add_zone(self, user_input=None):

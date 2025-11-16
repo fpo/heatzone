@@ -1,0 +1,142 @@
+{
+  "entity": {
+    "switch": {
+      "present": {
+        "name": "Anwesend"
+      },
+      "boost": {
+        "name": "Boost"
+      }
+    },
+    "number": {
+      "boost_duration": {
+        "name": "Boost-Dauer"
+      },
+      "boost_temp": {
+        "name": "Boost-Temp"
+      },
+      "manual_temp": {
+        "name": "Manuelle Temp"
+      },
+      "delay": {
+        "name": "Verzögerung"
+      },
+      "priority": {
+        "name": "Priorität"
+      } 
+    },
+    "text": {
+      "profile": {
+        "name": "Profil"
+      },
+      "status": {
+        "name": "Status"
+      }
+    },
+    "sensor": {
+      "target_temperature": {
+        "name": "Temperatur-Soll"
+      },
+      "temperature_sensor": {
+        "name": "Temperatur-Ist"
+      },
+      "humidity_sensor": {
+        "name": "Feuchtigkeit"
+      },
+      "window_sensor": {
+        "name": "Fensterkontakt",
+        "state": {
+          "open": "Offen",
+          "closed": "Geschlossen",
+          "unknown": "Unbekannt"
+        }
+      }
+    },
+    "select": {
+      "global_mode": {
+        "name": "Modus",
+        "state": {
+          "off": "Aus",
+          "profile": "Profil",
+          "manual": "Manuell",
+          "holiday": "Urlaub"
+        }
+      },
+      "mode": {
+        "name": "Modus",
+        "state": {
+          "off": "Aus",
+          "profile": "Profil",
+          "manual": "Manuell",
+          "holiday": "Urlaub"
+        }
+      },
+      "humidity_sensor": {
+        "name": "Feuchtigkeitssensor"
+      },
+      "window_sensor": {
+        "name": "Fensterkontakt"
+      },
+      "temperature_sensor": {
+        "name": "Temperatursensor"
+      },
+      "thermostat_sensor": {
+        "name": "Thermostat"
+      }
+    },
+    "binary_sensor": {
+      "window_sensor": {
+        "name": "Fensterkontakt",
+        "state": {
+          "on": "Offen",
+          "off": "Geschlossen"
+        }
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "title": "MQTT Verbindung einrichten",
+        "description": "Gib die MQTT Zugangsdaten ein.",
+        "data": {
+          "mqtt_host": "MQTT Host",
+          "mqtt_port": "MQTT Port",
+          "mqtt_websocket_port": "MQTT WebSocket Port",
+          "mqtt_user": "MQTT Benutzername",
+          "mqtt_password": "MQTT Passwort"
+        }
+      }
+    },
+    "error": {
+      "zone_exists": "Eine Zone mit diesem Namen existiert bereits."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "menu_options": {
+          "add_zone": "Zone hinzufügen",
+          "mqtt_settings": "MQTT-Einstellungen"
+        }
+      },
+      "add_zone": {
+        "title": "Zone hinzufügen",
+        "data": {
+          "name": "Zonenname"
+        }
+      },
+      "mqtt_settings": {
+        "title": "MQTT-Einstellungen",
+        "data": {
+          "mqtt_host": "MQTT Host",
+          "mqtt_port": "MQTT Port",
+          "mqtt_websocket_port": "MQTT WebSocket Port",
+          "mqtt_user": "MQTT Benutzername",
+          "mqtt_password": "MQTT Passwort"
+        }
+      }
+    }
+  }
+}
+

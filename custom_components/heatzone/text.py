@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.helpers import translation
 from .entity import ZoneEntityCore
 from .const import *
 
@@ -31,9 +32,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     _LOGGER.debug(f"Setting up {len(entities)} text entities for {len(zones)} zones")
     async_add_entities(entities)
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Base class texts
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 
 class ZoneTextBase(ZoneEntityCore, TextEntity):
     """Basisklasse für Zonen-Textfelder."""
@@ -44,15 +45,15 @@ class ZoneTextBase(ZoneEntityCore, TextEntity):
         self.async_write_ha_state()
         _LOGGER.debug(f"Updated {self.entity_id} text to {value}")
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Zone texts
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 
 class ZoneProfileText(ZoneTextBase):
     """Represents the MQTT topic text field for a zone."""
 
     _attr_mode = "text"
-    _attr_name_suffix = "Profil"
+    _attr_name_suffix = "Profile"
     _attr_unique_suffix = "profile"
     _attr_default_value = "Default"
 

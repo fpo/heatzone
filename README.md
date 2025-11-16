@@ -31,6 +31,7 @@ Heatzone has several devices in its integration with the following functions:
     - Manual temperature = Definition of a temperature for manual mode
     - Profile = The profile name of the profile to be used for this zone
     (see also profile definition MQTT - This is also the subtopic of the profile)
+    - Priority (Only important for heating control - see heating control)
     - Temperature sensor = Selection of an entity for the actual temperature
     - Thermostat = The thermostat to be controlled
     - Delay = The time during which no change should occur if the window contact is open
@@ -98,3 +99,24 @@ unzip heatzone-main.zip
 mv heatzone-main/custom_components/heatzone/* .
 ```
 
+## Thermostats
+
+Currently supported are:
++ Aqara E1
++ Homematic (External temperature sensor not possible!)
+
+(Please leave information here about which thermostats you would like supported and how)
+
+Alternatively, an unknown thermostat can also be used with this integration by creating 
+an automation that transmits the external temperature to the thermostat. 
+The target temperature is also transmitted without direct support.
+
+## Heating Control
+
+The heating control is currently still in the testing phase. 
+My goal was and is to control a Vaillant gas boiler. I always found it quite inconvenient
+to do this via the control unit. In addition, with the standard Vaillant solution, 
+I only have one reference point (namely the living room). The goal is therefore to have 
+the most convenient control possible with weekly profiles that allow for additional 
+prioritization of the heating zones and thus also a shifting of the reference point. 
+The priority setting is used for this purpose.
