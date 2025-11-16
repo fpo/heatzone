@@ -86,7 +86,7 @@
     },
     "binary_sensor": {
       "window_sensor": {
-        "name": "Wondow Sensor",
+        "name": "Window Sensor",
         "state": {
           "on": "Open",
           "off": "Closed"
