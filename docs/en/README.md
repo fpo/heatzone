@@ -134,4 +134,4 @@ with standard cards.
 
 Please note, however, that zones are not climate entities.
 
-They are available here: [HeatZone Custom Cards](https://github.com/fpo/heatzone-card/blob/main/docs/de/README.md)
+They are available here: [HeatZone Custom Cards](https://github.com/fpo/heatzone-card/blob/main/docs/en/README.md)
