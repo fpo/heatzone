@@ -1,3 +1,5 @@
+# /config/custom_components/heatzone/websocket_api.py
+
 import logging
 import voluptuous as vol
 from homeassistant.components import websocket_api
@@ -5,21 +7,23 @@ from homeassistant.components import websocket_api
 _LOGGER = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------
-# Setup-Funktion wird beim Start der Integration aufgerufen
+# The setup function is called when the integration starts.
 # --------------------------------------------------------------------
+ 
 async def async_setup_ws_api(hass):
     """Register HeatZone WebSocket API commands."""
     _LOGGER.debug("Registering HeatZone WebSocket command...")
     websocket_api.async_register_command(hass, handle_get_private_config)
     _LOGGER.info("HeatZone WebSocket command registered successfully.")
 
+# --------------------------------------------------------------------
+# WebSocket-command
+# --------------------------------------------------------------------
 
-# --------------------------------------------------------------------
-# WebSocket-Befehl
-# --------------------------------------------------------------------
 @websocket_api.websocket_command({
     vol.Required("type"): "heatzone/get_private_config"
-})
+    })
+
 @websocket_api.async_response
 async def handle_get_private_config(hass, connection, msg):
     """Send stored MQTT configuration from config entry."""

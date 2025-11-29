@@ -1,9 +1,11 @@
+# /config/custom_components/heatzone/const.py
+
 from enum import StrEnum
 
 DOMAIN = "heatzone"
 DEFAULT_NAME = "HeatZone"
 
-PLATFORMS = ["number", "switch", "select", "text", "sensor", "binary_sensor"] 
+PLATFORMS = ["number", "switch", "select", "text", "sensor", "binary_sensor", "button"] 
 
 GLOBAL_DEVICE_NAME = "Global"
 GLOBAL_DEVICE_ID = "global"
@@ -41,6 +43,7 @@ TEMP_OFF = 0.0
 TEMP_FALLBACK = -1.0
 MAX_RETRYS = 12
 CLEANUP_TIMEOUT_MINUTES = 10
+DEFAULT_CURRENT_TEMP = 25.0
 
 # Feste Sub-Topics für Profile
 PROFILE_SUBTOPICS = [

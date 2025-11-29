@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 600 90"
+     width="600" height="auto"
+     preserveAspectRatio="xMidYMid meet"
+     role="img"
+     aria-label="Achtung: Dies ist noch Beta Status - Auf eigene Gefahr!">
+
+  <!-- Hintergrund-Rechteck mit Rand -->
+  <rect x="5" y="5" width="580" height="80" rx="8" fill="#fff0f0" stroke="#c62828" stroke-width="2"/>
+
+  <g font-family="Arial, Helvetica, sans-serif">
+    <!-- Warning icon -->
+    <text x="30" y="60" font-size="40" aria-hidden="true">⚠️</text>
+
+    <!-- Label -->
+    <text x="90" y="42" font-size="20" font-weight="700" fill="#8b0000">ACHTUNG</text>
+
+    <!-- Message -->
+    <text x="90" y="64" font-size="16" fill="#4d0000">Dies ist noch Beta Status - Auf eigene Gefahr!</text>
+  </g>
+</svg>

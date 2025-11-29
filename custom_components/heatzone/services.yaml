@@ -1,5 +1,6 @@
-# services.yaml in Ihrem Integrationsordner
+# /config/custom_components/heatzone/services.yaml
+
 force_update:
   name: Force Update
-  description: Manuelles Auslösen einer Aktualisierung der Heiztemperaturdaten.
-  fields: {} # Leeres Feld-Objekt, da keine Parameter benötigt werden
+  description: force temp update.
+  fields: {} 

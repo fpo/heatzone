@@ -1,16 +1,12 @@
 # /config/custom_components/heatzone/select.py
+
 from __future__ import annotations
-from enum import StrEnum
-from typing import Optional
+from typing import Optional, Callable
 from homeassistant.components.select import SelectEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback, Event
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.helpers import translation
 from homeassistant.helpers.event import async_call_later
-from homeassistant.const import EVENT_STATE_CHANGED
 from .entity import ZoneEntityCore
 from .const import *
 
@@ -18,7 +14,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Setup
+# ANCHOR - Setup
 # ---------------------------------------------------------------------------
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, 
@@ -27,24 +23,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     zones = entry.options.get("zones") or entry.data.get("zones", {})
     entities: list[SelectEntity] = []
 
-    entities.append(GlobalModeSelect(hass, entry))
-
-    for zone_id, zone_data in zones.items():
-        entities.append(ZoneModeSelect(hass, entry, zone_id, zone_data))
-        entities.append(ZoneWindowSelect(hass, entry, zone_id, zone_data))
-        entities.append(ZoneTemperatureSelect(hass, entry, zone_id, zone_data))
-        entities.append(ZoneHumiditySelect(hass, entry, zone_id, zone_data))
-        entities.append(ZoneThermostatSelect(hass, entry, zone_id, zone_data))
+    for zone_id in zones:
+        entities.append(ZoneModeSelect(hass, entry, zone_id))
+        entities.append(ZoneWindowSelect(hass, entry, zone_id))
+        entities.append(ZoneTemperatureSelect(hass, entry, zone_id))
+        entities.append(ZoneHumiditySelect(hass, entry, zone_id))
+        entities.append(ZoneThermostatSelect(hass, entry, zone_id))
 
     _LOGGER.debug("Setting up %d select entities", len(entities))
     async_add_entities(entities)
 
 # ---------------------------------------------------------------------------
-# Basis-Klasse für Select
+# ANCHOR - Base class for select
 # ---------------------------------------------------------------------------
 
 class ZoneSelectBase(ZoneEntityCore, SelectEntity):
-    """Basisklasse für alle zonenbezogenen Selects mit sicherem Restore, Mapping und dynamischen Optionen."""
+    """Base class for all zone-related selects with secure restore,mapping and dynamic options."""
 
     _attr_icon: str | None = None
     _domain_filter: str = ""
@@ -55,6 +49,8 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
     _entity_map: dict[str, str] = {}  # FriendlyName → entity_id
     _restored_option: Optional[str] = None
     _state_listener_unsubscribe: Optional[Callable] = None
+    _reload_attempts: int = 0
+    _max_reload_attempts: int = 5
 
     @property
     def extra_state_attributes(self) -> dict:
@@ -80,7 +76,7 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
         """Setup entity, restore state, and attach listener."""
         await ZoneEntityCore.async_added_to_hass(self)
 
-        # Restore letzten Zustand
+        # restore last state
         if (last_state := await self.async_get_last_state()) is not None:
             if last_state.state not in (None, "unknown", "unavailable"):
                 self._restored_option = last_state.state
@@ -91,31 +87,13 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
                     self._restored_option,
                 )
 
-        # Optionen initial laden (und Default anwenden)
+        # load options initial
         await self._load_options()
 
-        # Verzögerter Reload nach Startup - unterschiedliche Delays je nach Domain
-        delay_map = {
-            "climate": 10,      # Climate-Entities brauchen länger
-            "sensor": 3,       # Sensoren sind meist schneller
-            "binary_sensor": 3 # Binary Sensoren auch schnell
-        }
-        
-        delay = delay_map.get(self._domain_filter, 3)  # Default: 3 Sekunden
-        
-        async def delayed_reload(_now):
-            """Reload options after other entities are fully loaded."""
-            _LOGGER.debug(
-                "[%s/%s] Running delayed options reload (after %d seconds)",
-                getattr(self, "_zone_name", "Global"),
-                self.__class__.__name__,
-                delay,
-            )
-            await self._load_options()
-        
-        async_call_later(self.hass, delay, delayed_reload)
+        # staggered reload strategy with multiple attempts
+        await self._schedule_reload_attempts()
 
-        # Listener für Änderungen in anderen Entities aktivieren
+        # enable listener for changes in other entities
         @callback
         def _state_changed_listener(event: Event) -> None:
             entity_id = event.data.get("entity_id")
@@ -129,22 +107,74 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
             "state_changed", _state_changed_listener
         )
 
+    async def _schedule_reload_attempts(self) -> None:
+        """Schedule multiple reload attempts with increasing delays."""
+        # Different delays depending on the domain
+        delay_map = {
+            "climate": [3, 8, 15, 25, 40],      # Climate entities need more time
+            "sensor": [2, 5, 10],                # Sensors are faster
+            "binary_sensor": [2, 5, 10]          # Binary sensors too
+        }
+        
+        delays = delay_map.get(self._domain_filter, [2, 5, 10])
+        
+        for attempt, delay in enumerate(delays, start=1):
+            async def delayed_reload(_now, attempt_num=attempt):
+                """Reload options after delay."""
+                _LOGGER.debug(
+                    "[%s/%s] Reload attempt %d/%d (after %d seconds)",
+                    getattr(self, "_zone_name", "Global"),
+                    self.__class__.__name__,
+                    attempt_num,
+                    len(delays),
+                    delay,
+                )
+                
+                old_count = len(self._attr_options)
+                await self._load_options()
+                new_count = len(self._attr_options)
+                
+                # Stop further attempts if entities were found
+                if new_count > 1:  # More than just "None"
+                    _LOGGER.debug(
+                        "[%s/%s] Successfully loaded %d options, stopping further attempts",
+                        getattr(self, "_zone_name", "Global"),
+                        self.__class__.__name__,
+                        new_count,
+                    )
+                    self._reload_attempts = len(delays)  # Mark as complete
+                elif attempt_num == len(delays):
+                    _LOGGER.warning(
+                        "[%s/%s] No %s entities found after %d attempts",
+                        getattr(self, "_zone_name", "Global"),
+                        self.__class__.__name__,
+                        self._domain_filter,
+                        len(delays),
+                    )
+            
+            async_call_later(self.hass, delay, delayed_reload)
+
     async def _async_reload_options(self) -> None:
         """Reload options asynchronously."""
         await self._load_options()
 
     async def _load_options(self) -> None:
-        """Lade verfügbare Optionen und baue FriendlyName→entity_id Mapping."""
+        """Load available options and build FriendlyName → entity_id mapping"""
         if not self._domain_filter:
             self._apply_restored_or_default_option()
             return
 
         old_options = set(self._attr_options)
-        self._attr_options = ["Kein"]
-        self._entity_map = {"Kein": None}  # Reset Mapping
+        old_count = len(self._attr_options)
+        
+        self._attr_options = ["None"]
+        self._entity_map = {"None": None}  # Reset Mapping
 
+        # Count available entities for logging
+        available_count = 0
+        
         for state in self.hass.states.async_all(self._domain_filter):
-            # Für climate gilt: keine device_class vorhanden
+            # For climate: no device_class exists
             if self._domain_filter == "climate" or (
                 self._device_classes
                 and state.attributes.get("device_class") in self._device_classes
@@ -153,21 +183,34 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
                 entity_id = state.entity_id
                 self._attr_options.append(friendly)
                 self._entity_map[friendly] = entity_id
+                available_count += 1
 
-        self._attr_options.sort(key=lambda x: (x != "Kein", x))
+        self._attr_options.sort(key=lambda x: (x != "None", x))
 
+        new_count = len(self._attr_options)
+        
+        # Log only if something changed
         if set(self._attr_options) != old_options:
             _LOGGER.debug(
-                "[%s/%s] Options updated (%d items): %s",
+                "[%s/%s] Options updated: %d → %d items (%d %s entities found)",
                 getattr(self, "_zone_name", "Global"),
                 self.__class__.__name__,
-                len(self._attr_options),
-                ", ".join(self._attr_options),
+                old_count,
+                new_count,
+                available_count,
+                self._domain_filter,
             )
             self._apply_restored_or_default_option()
+        elif new_count == 1:  # Only "None" available
+            _LOGGER.debug(
+                "[%s/%s] No %s entities available yet (will retry)",
+                getattr(self, "_zone_name", "Global"),
+                self.__class__.__name__,
+                self._domain_filter,
+            )
 
     def _apply_restored_or_default_option(self) -> None:
-        """Wende Restored- oder Default-Option an."""
+        """Apply the restored or default option."""
         # Restore
         if self._restored_option and self._restored_option in self._attr_options:
             self._attr_current_option = self._restored_option
@@ -183,9 +226,9 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
                           self.__class__.__name__,
                           self._attr_default_value)
         # Fallback
-        elif "Kein" in self._attr_options:
-            self._attr_current_option = "Kein"
-            _LOGGER.debug("[%s/%s] No restore/default, fallback 'Kein'",
+        elif "None" in self._attr_options:
+            self._attr_current_option = "None"
+            _LOGGER.debug("[%s/%s] No restore/default, fallback 'None'",
                           getattr(self, "_zone_name", "Global"),
                           self.__class__.__name__)
 
@@ -206,39 +249,25 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
         _LOGGER.debug(f"Selected {option} for {self.entity_id}")
         
 # ---------------------------------------------------------------------------
-# Global Select
-# ---------------------------------------------------------------------------
-
-class GlobalModeSelect(ZoneSelectBase):
-    """Globaler Modus-Select."""
-
-    _attr_is_global = True
-    _attr_icon = "mdi:home-thermometer"
-    _attr_name_suffix = "Modus"
-    _attr_unique_suffix = "global_mode"
-    _attr_options = HEATER_MODES
-    _attr_default_value = HeaterMode.OFF.value
-
-
-# ---------------------------------------------------------------------------
-# Zone Selects
+# ANCHOR - Zone mode select
 # ---------------------------------------------------------------------------
 
 class ZoneModeSelect(ZoneSelectBase):
-    """Zonen-Modus (statische Liste)."""
+    """Zone mode."""
 
     _attr_icon = "mdi:radiator"
     _attr_name_suffix = "Modus"
     _attr_unique_suffix = "mode"
     _attr_options = HEATER_MODES
     _attr_default_value = HeaterMode.OFF.value
+    _update_temps = True
 
 # ---------------------------------------------------------------------------
-# Sensorbased Selects
+# ANCHOR - Sensorbased selects
 # ---------------------------------------------------------------------------
 
 class ZoneWindowSelect(ZoneSelectBase):
-    """Fenster-/Türkontakt-Auswahl."""
+    """Window/door contact selection."""
 
     _attr_icon = "mdi:window-open-variant"
     _domain_filter = "binary_sensor"
@@ -247,7 +276,7 @@ class ZoneWindowSelect(ZoneSelectBase):
     _attr_unique_suffix = "window_sensor"
 
 class ZoneTemperatureSelect(ZoneSelectBase):
-    """Temperatursensor-Auswahl."""
+    """Temperature sensor selection."""
 
     _attr_icon = "mdi:thermometer"
     _domain_filter = "sensor"
@@ -256,7 +285,7 @@ class ZoneTemperatureSelect(ZoneSelectBase):
     _attr_unique_suffix = "temperature_sensor"
 
 class ZoneHumiditySelect(ZoneSelectBase):
-    """Feuchtigkeitssensor-Auswahl."""
+    """Humidity sensor selection."""
 
     _attr_icon = "mdi:water-percent"
     _domain_filter = "sensor"
@@ -265,7 +294,7 @@ class ZoneHumiditySelect(ZoneSelectBase):
     _attr_unique_suffix = "humidity_sensor"
     
 class ZoneThermostatSelect(ZoneSelectBase):
-    """Thermostat-Auswahl."""
+    """Thermostat selection."""
 
     _attr_icon = "mdi:thermostat"
     _domain_filter = "climate"

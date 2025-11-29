@@ -1,13 +1,9 @@
 # /config/custom_components/heatzone/text.py
 
-from homeassistant.components.text import TextEntity, ENTITY_ID_FORMAT
+from homeassistant.components.text import TextEntity
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.helpers.restore_state import RestoreEntity
-from homeassistant.helpers.entity import EntityCategory
-from homeassistant.helpers import translation
 from .entity import ZoneEntityCore
 from .const import *
 
@@ -15,7 +11,7 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Setup
+# ANCHOR - Setup
 # ---------------------------------------------------------------------------
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, 
@@ -25,19 +21,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     zones = entry.options.get("zones", {})
     
     entities = []
-    for zone_id, zone_data in zones.items():
-        entities.append(ZoneProfileText(hass, entry, zone_id, zone_data))
-    #    entities.append(ZoneStateText(hass, entry, zone_id, zone_data))
+    for zone_id in zones:
+        entities.append(ZoneProfileText(hass, entry, zone_id))
     
     _LOGGER.debug(f"Setting up {len(entities)} text entities for {len(zones)} zones")
     async_add_entities(entities)
 
 # ---------------------------------------------------------------------------
-# Base class texts
+# ANCHOR - Base class texts
 # ---------------------------------------------------------------------------
 
 class ZoneTextBase(ZoneEntityCore, TextEntity):
-    """Basisklasse für Zonen-Textfelder."""
+    """Base class for text"""
 
     async def async_set_value(self, value: str) -> None:
         """Set new text value."""
@@ -46,25 +41,19 @@ class ZoneTextBase(ZoneEntityCore, TextEntity):
         _LOGGER.debug(f"Updated {self.entity_id} text to {value}")
 
 # ---------------------------------------------------------------------------
-# Zone texts
+# ANCHOR - Zone texts
 # ---------------------------------------------------------------------------
 
 class ZoneProfileText(ZoneTextBase):
-    """Represents the MQTT topic text field for a zone."""
+    """Represents the MQTT subtopic text field for a zone."""
 
     _attr_mode = "text"
     _attr_name_suffix = "Profile"
     _attr_unique_suffix = "profile"
     _attr_default_value = "Default"
+    _update_temps = True
 
-#class ZoneStateText(ZoneTextBase):
-#    """Represents the state text field for a zone."""
 
-#    _attr_mode = "text"
-#    _attr_entity_category = EntityCategory.DIAGNOSTIC
-#    _attr_name_suffix = "Status"
-#    _attr_unique_suffix = "status"
-#    _attr_default_value = "O.K."
 
         
         

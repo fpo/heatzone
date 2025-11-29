@@ -1,10 +1,14 @@
-# HeatZone integration for Home Assistant
+# HeatZone Integration for Home Assistant
 
-Heatzone ist als als Heizungssteuerung innerhalb von Home Assistant integriert worden. 
+[![EN](https://img.shields.io/badge/EN-English-blue)](https://github.com/fpo/heatzone/blob/main/docs/en/README.md) [![DE](https://img.shields.io/badge/DE-Deutsch-red)](https://github.com/fpo/heatzone/blob/main/docs/de/README.md)
 
-> [!WARNING]  
-> **Achtung** dies ist ein sehr früher Entwicklungsstand und nicht für den Produktiveinsatz
-> vorgesehen. Nutzung auf eigene Gefahr. **
+Heatzone ist als Heizungssteuerung innerhalb von Home Assistant integriert worden. 
+
+![Warning](/assets/warning-red-warning-de.svg)
+
+## Installation via HACS
+
+[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=fpo&repository=heatzone&category=integration)
 
 ## Features
 
@@ -38,7 +42,6 @@ Heatzone hat in seiner Integration mehrere Geräte mit folgenden Funktionen:
 
 Es können beliebige Zonen hinzugefügt werden. Und auch wieder gelöscht werden. Nur die Globalen 
 Einstellungen können nicht gelöscht werden.
-
 
 ## Einstellungen Integration
 
@@ -90,7 +93,7 @@ Hier aber die eingentlichen subtopis:
 ([{"From":"0:00","To":"9:00","TempID":0},{"From":"9:00","To":"8:00","TempID":1}]) 
 
 
-## Installation
+## Manuelle Installation
 
 ```bash
 cd YOUR_HASS_CONFIG_DIRECTORY    # same place as configuration.yaml
@@ -124,3 +127,15 @@ Wohnzimmer). Ziel ist es also eine möglichst komfortable Steuerung mit
 Wochenprofilen zu haben die eine zusätzliche Priorisierung der Heizzonen 
 und somit auch eine Verschiebung des Referenzpunktes zuläßt. 
 Dafür dient die Einstellung Priorität.
+
+## Custom Cards
+
+Die Integration funktioniert selbstverständlich völlig ohne Custom-Cards.
+Es ist aber deutlich komfortabler die entsprechenden MQTT-Profile mit
+den verfügbaren Custom-Cards zu steuern.
+
+Selbstverständlich können sie auch die einzelnen Entitäten mit Standard-
+Cards steuern. Bitte beachten sie aber die Zonen sind keine climate-
+Entitäten.
+
+Hier sind sie verfügbar: [HeatZone Custom Cards](https://github.com/fpo/heatzone-card/blob/main/docs/de/README.md)
