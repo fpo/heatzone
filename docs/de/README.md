@@ -45,7 +45,7 @@ Einstellungen können nicht gelöscht werden.
 
 ## Einstellungen Integration
 
-Über das Zahnradsymbol sind die Einstellunegn der Integration möglich. Hier definieren sie bitte
+Über das Zahnradsymbol sind die Einstellungen der Integration möglich. Hier definieren sie bitte
 die Zugangsdaten für den mqtt Broker. Diese Clientdefinitionen laufen völlig getrennt von dem 
 internen mqtt Broker von Home Assistant.
 
