@@ -57,8 +57,8 @@ class HeatzoneOptionsFlow(config_entries.OptionsFlow):
         """Main-Menue."""
         return self.async_show_menu(
             step_id="init",
-            # menu_options=["add_zone", "mqtt_settings" ]
-            menu_options={"add_zone": "Add new zone", "mqtt_settings": "MQTT-Settings"}
+            menu_options=["add_zone", "mqtt_settings" ]
+            # menu_options={"add_zone": "Add new zone", "mqtt_settings": "MQTT-Settings"}
         )
     
     async def async_step_add_zone(self, user_input=None):

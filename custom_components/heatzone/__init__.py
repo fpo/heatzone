@@ -1,6 +1,7 @@
 # /config/custom_components/heatzone/__init__.py
 
 import os
+from pathlib import Path
 import shutil
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.components import frontend
