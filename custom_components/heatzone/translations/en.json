@@ -1,5 +1,19 @@
 {
   "entity": {
+    "button": {
+      "set_all_holiday": {
+        "name": "All zones to holiday"
+      },
+      "set_all_manual": {
+        "name": "All zones to manual"
+      },
+      "set_all_off": {
+        "name": "All zones to off"
+      },
+      "set_all_profile": {
+        "name": "All zones to profile"
+      }
+    },
     "switch": {
       "present": {
         "name": "Present"
@@ -23,7 +37,13 @@
       },
       "priority": {
         "name": "Priority"
-      } 
+      },
+      "temp_calibrate": {
+        "name": "Calibrate"
+      },
+      "hysteresis": {
+        "name": "Hysteresis"
+      }   
     },
     "text": {
       "profile": {
@@ -50,6 +70,9 @@
           "closed": "Closed",
           "unknown": "Unknown"
         }
+      },
+      "temp_diff": {
+        "name": "Temperature Difference"
       }
     },
     "select": {
@@ -72,16 +95,28 @@
         }
       },
       "humidity_sensor": {
-        "name": "Humididy Sensor"
+        "name": "Humididy Sensor",
+        "state": {
+          "None": "Kein"
+        }
       },
       "window_sensor": {
-        "name": "Window Sensor"
+        "name": "Window Sensor",
+        "state": {
+          "None": "Kein"
+        }
       },
       "temperature_sensor": {
-        "name": "Temperature Sensor"
+        "name": "Temperature Sensor",
+        "state": {
+          "None": "Kein"
+        }
       },
       "thermostat_sensor": {
-        "name": "Thermostat"
+        "name": "Thermostat",
+        "state": {
+          "None": "Kein"
+        }
       }
     },
     "binary_sensor": {
@@ -90,6 +125,15 @@
         "state": {
           "on": "Open",
           "off": "Closed"
+        }
+      },
+      "heating": {
+        "name": "Heating",
+        "state": {
+          "on": "On",
+          "off": "Off",
+          "unknown": "Unknown",
+          "unavailable": "Unavailable"
         }
       }
     }

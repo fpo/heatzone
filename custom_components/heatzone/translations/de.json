@@ -1,5 +1,19 @@
 {
   "entity": {
+    "button": {
+      "set_all_holiday": {
+        "name": "Alle Zonen auf Urlaub"
+      },
+      "set_all_manual": {
+        "name": "Alle Zonen auf Manuell"
+      },
+      "set_all_off": {
+        "name": "Alle Zonen auf Aus"
+      },
+      "set_all_profile": {
+        "name": "Alle Zonen auf Profil"
+      }
+    },
     "switch": {
       "present": {
         "name": "Anwesend"
@@ -23,7 +37,13 @@
       },
       "priority": {
         "name": "Priorität"
-      } 
+      },
+      "temp_calibrate": {
+        "name": "Kalibrierung"
+      },
+      "hysteresis": {
+        "name": "Hysterese"
+      }  
     },
     "text": {
       "profile": {
@@ -50,18 +70,12 @@
           "closed": "Geschlossen",
           "unknown": "Unbekannt"
         }
+      },
+      "temp_diff": {
+        "name": "Temperaturdifferenz"
       }
     },
     "select": {
-      "global_mode": {
-        "name": "Modus",
-        "state": {
-          "off": "Aus",
-          "profile": "Profil",
-          "manual": "Manuell",
-          "holiday": "Urlaub"
-        }
-      },
       "mode": {
         "name": "Modus",
         "state": {
@@ -72,16 +86,28 @@
         }
       },
       "humidity_sensor": {
-        "name": "Feuchtigkeitssensor"
+        "name": "Feuchtigkeitssensor",
+        "state": {
+          "None": "Kein"
+        }
       },
       "window_sensor": {
-        "name": "Fensterkontakt"
+        "name": "Fensterkontakt",
+        "state": {
+          "None": "Kein"
+        }
       },
       "temperature_sensor": {
-        "name": "Temperatursensor"
+        "name": "Temperatursensor",
+        "state": {
+          "None": "Kein"
+        }
       },
       "thermostat_sensor": {
-        "name": "Thermostat"
+        "name": "Thermostat",
+        "state": {
+          "None": "Kein"
+        }
       }
     },
     "binary_sensor": {
@@ -90,6 +116,15 @@
         "state": {
           "on": "Offen",
           "off": "Geschlossen"
+        }
+      },
+      "heating": {
+        "name": "Heizung",
+        "state": {
+          "on": "An",
+          "off": "Aus",
+          "unknown": "Unbekannt",
+          "unavailable": "Nicht verfügbar"
         }
       }
     }
