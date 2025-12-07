@@ -159,25 +159,27 @@
   "options": {
     "step": {
       "init": {
+        "title": "Heatzone Options",
         "menu_options": {
-          "add_zone": "Zone Add",
+          "add_zone": "Add new Zone",
           "mqtt_settings": "MQTT-Settings"
         }
       },
       "add_zone": {
-        "title": "Zone Add",
+        "title": "Add Zone",
+        "description": "Add a new Zone",
         "data": {
-          "name": "Zone Name"
+          "zone_name": "Zonename"
         }
       },
       "mqtt_settings": {
         "title": "MQTT-Settings",
+        "description": "Configure MQTT-Settings",
         "data": {
-          "mqtt_host": "MQTT Host",
-          "mqtt_port": "MQTT Port",
-          "mqtt_websocket_port": "MQTT WebSocket Port",
-          "mqtt_user": "MQTT Username",
-          "mqtt_password": "MQTT Password"
+          "broker": "MQTT-Host",
+          "port": "Port",
+          "username": "Username",
+          "password": "Password"
         }
       }
     }

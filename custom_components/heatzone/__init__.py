@@ -37,6 +37,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "zones": zones,
     }
     
+    # copy paho-mqtt.js to www-folder
+    await _copy_mqtt_js(hass)
+    
     # Profile Manager is loading but not yet starting.
     profile_manager = ProfileManager(hass, entry)
     hass.data[DOMAIN][entry.entry_id]["profile_manager"] = profile_manager
@@ -149,6 +152,28 @@ async def async_remove_config_entry_device(
             _LOGGER.debug("RestoreStateData not yet initialized, no cleanup needed")
     
     return True
+
+
+async def _copy_mqtt_js(hass: HomeAssistant) -> None:
+    """Copy paho-mqtt.js to www folder."""
+    try:
+        source = Path(__file__).parent / "www" / "paho-mqtt.js"
+        www_dir = Path(hass.config.path("www"))
+        target = www_dir / "paho-mqtt.js"
+        
+        # www-Ordner erstellen falls nicht vorhanden
+        www_dir.mkdir(exist_ok=True)
+        
+        # Datei kopieren (überschreibt alte Version)
+        if source.exists():
+            await hass.async_add_executor_job(shutil.copy2, source, target)
+            _LOGGER.info("paho-mqtt.js copied to %s", target)
+        else:
+            _LOGGER.error("paho-mqtt.js not found in %s", source)
+            
+    except Exception as err:
+        _LOGGER.error("Error copying paho-mqtt.js: %s", err)
+
 
 async def async_setup(hass, config):
     """Set up HeatZone integration and serve custom card."""
