@@ -38,7 +38,8 @@ async def async_setup_entry(hass: HomeAssistant,entry: ConfigEntry,
         entities.append(ZoneCurrentHumiditySensor(hass, entry, zone_id))
         entities.append(ZoneTargetTemperatureSensor(hass, entry, zone_id))
 
-    _LOGGER.debug("Setting up %d sensor entities for %d zones", len(entities), len(zones))
+    _LOGGER.debug("Setting up %d sensor entities for %d zones",
+                  len(entities), len(zones))
     async_add_entities(entities)
 
 # -----------------------------------------------------------------------------
@@ -121,9 +122,11 @@ class ZoneTargetTemperatureSensor(ZoneSensorBase):
             return
             
         climate_entity_id = select_state.attributes.get("selected_entity_id")
-        climate_state = self.hass.states.get(climate_entity_id)
         
-        if not climate_state:
+        if climate_entity_id is not None:
+            climate_state = self.hass.states.get(climate_entity_id)
+        
+        if not climate_state or climate_entity_id is None:
             _LOGGER.warning(
                 "[%s] Climate-Entity %s existiert nicht oder ist nicht verfügbar",
                 self._zone_id, climate_entity_id)
