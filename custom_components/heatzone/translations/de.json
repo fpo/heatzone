@@ -94,7 +94,8 @@
       "window_sensor": {
         "name": "Fensterkontakt",
         "state": {
-          "None": "Kein"
+          "None": "Kein",
+          "selected": "{count} ausgewählt"
         }
       },
       "temperature_sensor": {
@@ -106,7 +107,8 @@
       "thermostat_sensor": {
         "name": "Thermostat",
         "state": {
-          "None": "Kein"
+          "None": "Kein",
+          "selected": "{count} ausgewählt"
         }
       }
     },

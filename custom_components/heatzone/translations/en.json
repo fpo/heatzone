@@ -76,6 +76,9 @@
       }
     },
     "select": {
+      "state": {
+        "selected": "{count} ausgewählt"
+      },
       "global_mode": {
         "name": "Modus",
         "state": {
@@ -97,25 +100,27 @@
       "humidity_sensor": {
         "name": "Humididy Sensor",
         "state": {
-          "None": "Kein"
+          "None": "None"
         }
       },
       "window_sensor": {
         "name": "Window Sensor",
         "state": {
-          "None": "Kein"
+          "None": "None",
+          "selected": "{count} selected"
         }
       },
       "temperature_sensor": {
         "name": "Temperature Sensor",
         "state": {
-          "None": "Kein"
+          "None": "None"
         }
       },
       "thermostat_sensor": {
         "name": "Thermostat",
         "state": {
-          "None": "Kein"
+          "None": "None",
+          "selected": "{count} selected"
         }
       }
     },

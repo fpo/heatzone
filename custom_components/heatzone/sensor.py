@@ -108,28 +108,15 @@ class ZoneTargetTemperatureSensor(ZoneSensorBase):
         if old is None or abs(old - temperature) >= 0.1:
             await self._send_to_climate(temperature)
     
-    async def _send_to_climate(self, temperature: float) -> None:
-        """Sendet Temperatur an die zugehörige Climate-Entität."""
+    async def _send_to_climate_entity(self, entity_id: str, temperature: float) -> None:
+        """Sendet Temperatur an eine einzelne Climate-Entität."""
+        climate_state = self.hass.states.get(entity_id)
         
-        # Hole Climate Entity ID aus Select
-        select_entity_id = f"select.{self._zone_id}_thermostat_sensor"
-        select_state = self.hass.states.get(select_entity_id)
-        
-        if not select_state or select_state.state in ("unknown", "unavailable", ""):
-            _LOGGER.debug(
-                "[%s] Kein Thermostat ausgewählt, überspringe Temperatur-Update",
-                self._zone_id)
-            return
-            
-        climate_entity_id = select_state.attributes.get("selected_entity_id")
-        
-        if climate_entity_id is not None:
-            climate_state = self.hass.states.get(climate_entity_id)
-        
-        if not climate_state or climate_entity_id is None:
+        if not climate_state:
             _LOGGER.warning(
                 "[%s] Climate-Entity %s existiert nicht oder ist nicht verfügbar",
-                self._zone_id, climate_entity_id)
+                self._zone_id, entity_id
+            )
             return
         
         # Lese min/max Temperatur aus den Attributen
@@ -143,26 +130,59 @@ class ZoneTargetTemperatureSensor(ZoneSensorBase):
             _LOGGER.warning(
                 "[%s] Temperatur %.1f°C liegt außerhalb der Grenzen (%.1f-%.1f°C), "
                 "verwende %.1f°C",
-                self._zone_id, temperature, min_temp, max_temp, clamped_temperature)
+                self._zone_id, temperature, min_temp, max_temp, clamped_temperature
+            )
         
         _LOGGER.info("[%s] Sende Solltemperatur %.1f°C an %s",
-                     self._zone_id, clamped_temperature, climate_entity_id)
+                    self._zone_id, clamped_temperature, entity_id)
         
         try:
             await self.hass.services.async_call(
                 "climate",
                 "set_temperature",
                 {
-                    "entity_id": climate_entity_id,
+                    "entity_id": entity_id,
                     "temperature": clamped_temperature
                 },
                 blocking=False
             )
             _LOGGER.debug("[%s] Temperatur %.1f°C an %s gesendet",
-                          self._zone_id, clamped_temperature, climate_entity_id)
+                        self._zone_id, clamped_temperature, entity_id)
         except Exception as err:
             _LOGGER.error("[%s] Fehler beim Senden der Temperatur an %s: %s",
-                          self._zone_id, climate_entity_id, err)
+                        self._zone_id, entity_id, err)
+
+    async def _send_to_climate(self, temperature: float) -> None:
+        """Sendet Temperatur an alle zugehörigen Climate-Entitäten."""
+        # Hole Climate Entity IDs aus Select
+        select_entity_id = f"select.{self._zone_id}_thermostat_sensor"
+        select_state = self.hass.states.get(select_entity_id)
+        
+        if not select_state or select_state.state in ("unknown", "unavailable", ""):
+            _LOGGER.debug(
+                "[%s] Kein Thermostat ausgewählt, überspringe Temperatur-Update",
+                self._zone_id
+            )
+            return
+        
+        # Hole Liste der ausgewählten Climate-Entities
+        climate_entity_ids = select_state.attributes.get("selected_entity_ids", [])
+        
+        if not climate_entity_ids:
+            _LOGGER.debug(
+                "[%s] Keine Thermostate in der Liste, überspringe Temperatur-Update",
+                self._zone_id
+            )
+            return
+        
+        _LOGGER.debug(
+            "[%s] Sende Temperatur %.1f°C an %d Thermostat(e)",
+            self._zone_id, temperature, len(climate_entity_ids)
+        )
+        
+        # Sende an alle ausgewählten Thermostaten
+        for climate_entity_id in climate_entity_ids:
+            await self._send_to_climate_entity(climate_entity_id, temperature)
             
 # -----------------------------------------------------------------------------
 # ANCHOR - Base class for sensors that reflect values ​​from Select.

@@ -1,5 +1,3 @@
-# /config/custom_components/heatzone/select.py
-
 from __future__ import annotations
 from typing import Optional, Callable
 from homeassistant.components.select import SelectEntity
@@ -34,19 +32,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     async_add_entities(entities)
 
 # ---------------------------------------------------------------------------
-# ANCHOR - Base class for select
+# ANCHOR - Base class for select mit Multi-Select Support
 # ---------------------------------------------------------------------------
 
 class ZoneSelectBase(ZoneEntityCore, SelectEntity):
-    """Base class for all zone-related selects with secure restore,mapping and dynamic options."""
+    """Base class for all zone-related selects with optional multi-select support."""
 
     _attr_icon: str | None = None
     _domain_filter: str = ""
     _device_classes: tuple[str, ...] = ()
     _attr_options: list[str] = []
     _attr_current_option: Optional[str] = None
+    _attr_allow_multiple: bool = False  # NEU: Default False für Abwärtskompatibilität
 
-    _entity_map: dict[str, str] = {}  # FriendlyName → entity_id
+    _entity_map: dict[str, str] = {}
+    _selected_entities: list[str] = []  # NEU: Liste für Multi-Select
     _restored_option: Optional[str] = None
     _state_listener_unsubscribe: Optional[Callable] = None
     _reload_attempts: int = 0
@@ -54,11 +54,20 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
-        """Expose entity mapping as attribute."""
-        return {
-            "entity_map": self._entity_map, 
-            "selected_entity_id": self.selected_entity_id 
-            }
+        """Expose entity mapping and selected entities as attributes."""
+        attrs = {
+            "entity_map": self._entity_map,
+            "allow_multiple": self._attr_allow_multiple,
+        }
+        
+        # NEU: Speichere Liste für Restore
+        if self._attr_allow_multiple:
+            attrs["selected_entity_ids"] = self._selected_entities
+            attrs["selection_count"] = len(self._selected_entities)
+        else:
+            attrs["selected_entity_id"] = self.selected_entity_id
+            
+        return attrs
 
     @property
     def current_option(self) -> str | None:
@@ -67,33 +76,70 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
 
     @property
     def selected_entity_id(self) -> Optional[str]:
-        """Return the entity_id of the selected option (if available)."""
-        if not self._attr_current_option:
-            return None
-        return self._entity_map.get(self._attr_current_option)
+        """Return the entity_id of the first selected option (backward compatible)."""
+        if self._attr_allow_multiple:
+            # if multi-select then first entry
+            return self._selected_entities[0] if self._selected_entities else None
+        else:
+            if not self._attr_current_option:
+                return None
+            return self._entity_map.get(self._attr_current_option)
+
+    @property
+    def selected_entity_ids(self) -> list[str]:
+        """Return all selected entity_ids (for multi-select)."""
+        if self._attr_allow_multiple:
+            return self._selected_entities.copy()
+        else:
+            # if single-select: list with max. 1 element
+            entity_id = self.selected_entity_id
+            return [entity_id] if entity_id else []
+
+    async def _translate_selected_state(self) -> str:
+        """Translate the selected state for multi-select display."""
+          
+        # try translate - fallback english
+        path = f"component.{DOMAIN}.entity.select.{self._attr_unique_suffix}.state.selected"
+        translated = self.platform.platform_data.platform_translations.get(path)
+        
+        if translated:
+            count_text = translated.format(count=len(self._selected_entities))
+        else:
+            count_text = f"{len(self._selected_entities)} selected"
+        
+        return count_text
 
     async def async_added_to_hass(self) -> None:
         """Setup entity, restore state, and attach listener."""
         await ZoneEntityCore.async_added_to_hass(self)
 
-        # restore last state
+        # restore for multi-select
         if (last_state := await self.async_get_last_state()) is not None:
-            if last_state.state not in (None, "unknown", "unavailable"):
-                self._restored_option = last_state.state
-                _LOGGER.debug(
-                    "[%s/%s] Restored option: %s",
-                    getattr(self, "_zone_name", "Global"),
-                    self.__class__.__name__,
-                    self._restored_option,
-                )
+            if self._attr_allow_multiple:
+                # restore list
+                if entity_ids := last_state.attributes.get("selected_entity_ids"):
+                    self._selected_entities = list(entity_ids)
+                    _LOGGER.debug(
+                        "[%s/%s] Restored %d entities: %s",
+                        getattr(self, "_zone_name", "Global"),
+                        self.__class__.__name__,
+                        len(entity_ids),
+                        entity_ids,
+                    )
+            else:
+                # restore single-entry
+                if last_state.state not in (None, "unknown", "unavailable"):
+                    self._restored_option = last_state.state
+                    _LOGGER.debug(
+                        "[%s/%s] Restored option: %s",
+                        getattr(self, "_zone_name", "Global"),
+                        self.__class__.__name__,
+                        self._restored_option,
+                    )
 
-        # load options initial
         await self._load_options()
-
-        # staggered reload strategy with multiple attempts
         await self._schedule_reload_attempts()
 
-        # enable listener for changes in other entities
         @callback
         def _state_changed_listener(event: Event) -> None:
             entity_id = event.data.get("entity_id")
@@ -109,18 +155,16 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
 
     async def _schedule_reload_attempts(self) -> None:
         """Schedule multiple reload attempts with increasing delays."""
-        # Different delays depending on the domain
         delay_map = {
-            "climate": [3, 8, 15, 25, 40],      # Climate entities need more time
-            "sensor": [2, 5, 10],                # Sensors are faster
-            "binary_sensor": [2, 5, 10]          # Binary sensors too
+            "climate": [3, 8, 15, 25, 40],
+            "sensor": [2, 5, 10],
+            "binary_sensor": [2, 5, 10]
         }
         
         delays = delay_map.get(self._domain_filter, [2, 5, 10])
         
         for attempt, delay in enumerate(delays, start=1):
             async def delayed_reload(_now, attempt_num=attempt):
-                """Reload options after delay."""
                 _LOGGER.debug(
                     "[%s/%s] Reload attempt %d/%d (after %d seconds)",
                     getattr(self, "_zone_name", "Global"),
@@ -134,15 +178,14 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
                 await self._load_options()
                 new_count = len(self._attr_options)
                 
-                # Stop further attempts if entities were found
-                if new_count > 1:  # More than just "None"
+                if new_count > 1:
                     _LOGGER.debug(
                         "[%s/%s] Successfully loaded %d options, stopping further attempts",
                         getattr(self, "_zone_name", "Global"),
                         self.__class__.__name__,
                         new_count,
                     )
-                    self._reload_attempts = len(delays)  # Mark as complete
+                    self._reload_attempts = len(delays)
                 elif attempt_num == len(delays):
                     _LOGGER.warning(
                         "[%s/%s] No %s entities found after %d attempts",
@@ -161,35 +204,59 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
     async def _load_options(self) -> None:
         """Load available options and build FriendlyName → entity_id mapping"""
         if not self._domain_filter:
-            self._apply_restored_or_default_option()
+            await self._apply_restored_or_default_option()
             return
 
         old_options = set(self._attr_options)
         old_count = len(self._attr_options)
         
-        self._attr_options = ["None"]
-        self._entity_map = {"None": None}  # Reset Mapping
-
-        # Count available entities for logging
-        available_count = 0
+        # WICHTIG: Liste komplett neu initialisieren
+        self._attr_options = []
+        self._entity_map = {}
         
+        # Füge "None" hinzu
+        self._attr_options.append("None")
+        self._entity_map["None"] = None
+
+        available_count = 0
+                
         for state in self.hass.states.async_all(self._domain_filter):
-            # For climate: no device_class exists
             if self._domain_filter == "climate" or (
                 self._device_classes
                 and state.attributes.get("device_class") in self._device_classes
             ):
                 friendly = state.name
                 entity_id = state.entity_id
-                self._attr_options.append(friendly)
-                self._entity_map[friendly] = entity_id
+                
+                # NEU: Bei Multi-Select Checkmark hinzufügen
+                if self._attr_allow_multiple:
+                    is_selected = entity_id in self._selected_entities
+                    display_name = f"{'✓ ' if is_selected else '  '}{friendly}"
+                    self._attr_options.append(display_name)
+                    self._entity_map[display_name] = entity_id
+                else:
+                    self._attr_options.append(friendly)
+                    self._entity_map[friendly] = entity_id
+                    
                 available_count += 1
 
-        self._attr_options.sort(key=lambda x: (x != "None", x))
+        # Sortiere alphabetisch, None bleibt oben
+        if len(self._attr_options) > 1:
+            none_option = self._attr_options[0]
+            rest = self._attr_options[1:]
+            rest.sort(key=lambda x: x.lstrip('✓ '))
+            self._attr_options = [none_option] + rest
+        
+        # NEU: Bei Multi-Select füge Status-Option hinzu wenn mehrere ausgewählt
+        if self._attr_allow_multiple and len(self._selected_entities) > 1:
+
+            count_text = await self._translate_selected_state()
+            count_option = f"✓ {count_text}"
+            self._attr_options.insert(0, count_option)
+            self._entity_map[count_option] = None
 
         new_count = len(self._attr_options)
         
-        # Log only if something changed
         if set(self._attr_options) != old_options:
             _LOGGER.debug(
                 "[%s/%s] Options updated: %d → %d items (%d %s entities found)",
@@ -200,8 +267,8 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
                 available_count,
                 self._domain_filter,
             )
-            self._apply_restored_or_default_option()
-        elif new_count == 1:  # Only "None" available
+            await self._apply_restored_or_default_option()
+        elif new_count == 1:
             _LOGGER.debug(
                 "[%s/%s] No %s entities available yet (will retry)",
                 getattr(self, "_zone_name", "Global"),
@@ -209,44 +276,114 @@ class ZoneSelectBase(ZoneEntityCore, SelectEntity):
                 self._domain_filter,
             )
 
-    def _apply_restored_or_default_option(self) -> None:
+    async def _apply_restored_or_default_option(self) -> None:
         """Apply the restored or default option."""
-        # Restore
-        if self._restored_option and self._restored_option in self._attr_options:
-            self._attr_current_option = self._restored_option
-            _LOGGER.debug("[%s/%s] Applied restored option: %s",
-                          getattr(self, "_zone_name", "Global"),
-                          self.__class__.__name__,
-                          self._restored_option)
-        # Default
-        elif getattr(self, "_attr_default_value", None) in self._attr_options:
-            self._attr_current_option = self._attr_default_value
-            _LOGGER.debug("[%s/%s] Applied default option: %s",
-                          getattr(self, "_zone_name", "Global"),
-                          self.__class__.__name__,
-                          self._attr_default_value)
-        # Fallback
-        elif "None" in self._attr_options:
-            self._attr_current_option = "None"
-            _LOGGER.debug("[%s/%s] No restore/default, fallback 'None'",
-                          getattr(self, "_zone_name", "Global"),
-                          self.__class__.__name__)
+        if self._attr_allow_multiple:
+            # multi-select restore/default
+            if len(self._selected_entities) == 0:
+                # none selected
+                self._attr_current_option = "None"
+            elif len(self._selected_entities) == 1:
+                # single select
+                entity_id = self._selected_entities[0]
+                # found display name and remove checkmark if present
+                for display_name, eid in self._entity_map.items():
+                    if eid == entity_id:
+                        self._attr_current_option = display_name
+                        break
+                else:
+                    self._attr_current_option = "None"
+            else:
+                # multiple select, try translate - fallback english
+                count_text = await self._translate_selected_state()
+                self._attr_current_option = f"✓ {count_text}"
+        else:
+            # single-select restore/default
+            if self._restored_option and self._restored_option in self._attr_options:
+                self._attr_current_option = self._restored_option
+                _LOGGER.debug("[%s/%s] Applied restored option: %s",
+                              getattr(self, "_zone_name", "Global"),
+                              self.__class__.__name__,
+                              self._restored_option)
+            elif getattr(self, "_attr_default_value", None) in self._attr_options:
+                self._attr_current_option = self._attr_default_value
+                _LOGGER.debug("[%s/%s] Applied default option: %s",
+                              getattr(self, "_zone_name", "Global"),
+                              self.__class__.__name__,
+                              self._attr_default_value)
+            elif "None" in self._attr_options:
+                self._attr_current_option = "None"
+                _LOGGER.debug("[%s/%s] No restore/default, fallback 'None'",
+                              getattr(self, "_zone_name", "Global"),
+                              self.__class__.__name__)
 
         self._attr_native_value = self._attr_current_option
         self.async_write_ha_state()
 
     async def async_select_option(self, option: str) -> None:
-        """Handle option selection for SelectEntity."""
+        """Handle option selection - toggle for multi-select, replace for single-select."""
         if option not in self._attr_options:
             _LOGGER.warning(
                 f"{self.entity_id}: Invalid option '{option}' (valid: {self._attr_options})"
             )
             return
 
-        self._attr_current_option = option
-        self._attr_native_value = option
+        if self._attr_allow_multiple:
+            # multi-select handling
+
+            # ignore if already selected status option
+            if "selected" in option:
+                return
+            
+            # handle "None" - clear all selections
+            if option == "None":
+                if self._selected_entities:
+                    self._selected_entities.clear()
+                    _LOGGER.debug(f"{self.entity_id}: Cleared all selections")
+                    await self._load_options()
+                    self._attr_current_option = "None"
+                    self._attr_native_value = self._attr_current_option
+                    self.async_write_ha_state()
+                return
+                
+            # get entity_id
+            entity_id = self._entity_map.get(option)
+            if not entity_id:
+                _LOGGER.warning(f"{self.entity_id}: No entity_id for option '{option}'")
+                return
+            
+            # toggle in list
+            if entity_id in self._selected_entities:
+                self._selected_entities.remove(entity_id)
+                action = "Removed"
+            else:
+                self._selected_entities.append(entity_id)
+                action = "Added"
+            
+            _LOGGER.debug(f"{self.entity_id}: {action} {option} ({entity_id})")
+            
+            # reload to update state and checkmarks
+            self.hass.async_create_task(self._load_options())
+            
+            # state update
+            if len(self._selected_entities) == 0:
+                self._attr_current_option = "None"
+            elif len(self._selected_entities) == 1:
+                # show the selected name
+                entity_id = self._selected_entities[0]
+                for display_name, eid in self._entity_map.items():
+                    if eid == entity_id:
+                        self._attr_current_option = display_name
+                        break
+            else:
+                # try translate - fallback english
+                count_text = await self._translate_selected_state()
+                self._attr_current_option = f"✓ {count_text}"
+        else:
+            self._attr_current_option = option
+        
+        self._attr_native_value = self._attr_current_option
         self.async_write_ha_state()
-        _LOGGER.debug(f"Selected {option} for {self.entity_id}")
         
 # ---------------------------------------------------------------------------
 # ANCHOR - Zone mode select
@@ -274,6 +411,7 @@ class ZoneWindowSelect(ZoneSelectBase):
     _device_classes = ("window", "door", "opening")
     _attr_name_suffix = "Window contact"
     _attr_unique_suffix = "window_sensor"
+    _attr_allow_multiple = True
 
 class ZoneTemperatureSelect(ZoneSelectBase):
     """Temperature sensor selection."""
@@ -294,9 +432,10 @@ class ZoneHumiditySelect(ZoneSelectBase):
     _attr_unique_suffix = "humidity_sensor"
     
 class ZoneThermostatSelect(ZoneSelectBase):
-    """Thermostat selection."""
+    """Thermostat selection - mit Multi-Select Support."""
 
     _attr_icon = "mdi:thermostat"
     _domain_filter = "climate"
     _attr_name_suffix = "Thermostat"
     _attr_unique_suffix = "thermostat_sensor"
+    _attr_allow_multiple = True 

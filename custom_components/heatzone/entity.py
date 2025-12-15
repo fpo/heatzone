@@ -6,7 +6,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers import entity_registry as er
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback, Event
-from homeassistant.const import EVENT_STATE_CHANGED  
+from homeassistant.const import EVENT_STATE_CHANGED, STATE_ON  
 from homeassistant.components.number import NumberEntity
 from homeassistant.components.select import SelectEntity
 from homeassistant.components.sensor import SensorEntity
@@ -233,46 +233,72 @@ class ZoneMirrorEntityBase(ZoneEntityCore):
             EVENT_STATE_CHANGED, _handle_select_change
         )
 
-        # sensor change listener
+        # sensor change listener - jetzt für alle ausgewählten Entities
         @callback
         def _handle_sensor_change(event: Event):
-            if self._selected_entity_id and event.data.get("entity_id") == self._selected_entity_id:
-                # force_refresh only applies to normal sensors, not to BinarySensors.
-                force_refresh = self._detect_platform() == "sensor"
-                self.async_schedule_update_ha_state(force_refresh=force_refresh)
+            # Prüfe, ob das geänderte Entity Teil der ausgewählten Entities ist
+            changed_entity_id = event.data.get("entity_id")
+            
+            # Überwache alle ausgewählten Entities
+            if hasattr(self, '_selected_entity_ids') and self._selected_entity_ids:
+                if changed_entity_id in self._selected_entity_ids:
+                    force_refresh = self._detect_platform() == "sensor"
+                    self.async_schedule_update_ha_state(force_refresh=force_refresh)
+                    return
+            
+            # Auch für den Fall, dass es sich um ein einzelnes Entity handelt
+            if hasattr(self, '_selected_entity_id') and self._selected_entity_id:
+                if changed_entity_id == self._selected_entity_id:
+                    force_refresh = self._detect_platform() == "sensor"
+                    self.async_schedule_update_ha_state(force_refresh=force_refresh)
 
         self._unsub_sensor = self.hass.bus.async_listen(
             EVENT_STATE_CHANGED, _handle_sensor_change
         )
 
     async def _update_selected_sensor_id(self):
-        """Reads the currently selected sensor from select."""
+        """Reads the currently selected sensor from select and sets up listeners."""
         
         select_state = self.hass.states.get(self._select_entity_id)
         if not select_state:
             self._selected_entity_id = None
+            self._selected_entity_ids = []
             self.async_schedule_update_ha_state()
             return
 
         selected_friendly = select_state.state
         if selected_friendly in (None, "unknown", "None"):
             self._selected_entity_id = None
+            self._selected_entity_ids = []
             self.async_schedule_update_ha_state()
             return
 
         entity_map = select_state.attributes.get("entity_map")
         if not entity_map:
             self._selected_entity_id = None
+            self._selected_entity_ids = []
             self.async_schedule_update_ha_state()
             return
 
-        self._selected_entity_id = entity_map.get(selected_friendly)
-        _LOGGER.debug("[%s] Selected sensor: %s", self._zone_id, self._selected_entity_id)
+        # Prüfe ob Multi-Select aktiv ist
+        allow_multiple = select_state.attributes.get("allow_multiple", False)
         
-        # force_refresh only for normal sensors
+        if not allow_multiple:
+            # Einzelne Auswahl
+            self._selected_entity_id = entity_map.get(selected_friendly)
+            self._selected_entity_ids = [self._selected_entity_id] if self._selected_entity_id else []
+        else:
+            # Mehrfachauswahl
+            selected_entity_ids = select_state.attributes.get("selected_entity_ids", [])
+            self._selected_entity_id = None  # Für Multi-Select kein einzelner ID
+            self._selected_entity_ids = selected_entity_ids
+            
+        _LOGGER.debug("[%s] Selected sensors: %s", self._zone_id, self._selected_entity_ids)
+        
+        # force_refresh nur für normale Sensoren
         force_refresh = self._detect_platform() == "sensor"
         self.async_schedule_update_ha_state(force_refresh=force_refresh)
-
+    
     async def async_will_remove_from_hass(self):
         """remove all listener"""
         
@@ -284,13 +310,78 @@ class ZoneMirrorEntityBase(ZoneEntityCore):
             self._unsub_sensor = None
 
     def _get_target_state(self):
-        """get the state of the sensor"""
+        """Get the state of the sensor(s) - supports both single and multiple selection."""
         
-        if not self._selected_entity_id:
+        if not self._selected_entity_id and not getattr(self, '_selected_entity_ids', []):
             return None
 
-        target_state = self.hass.states.get(self._selected_entity_id)
-        if not target_state or target_state.state in ("unknown", "unavailable"):
+        # Hole den Select-State um zu prüfen ob Multi-Select aktiv ist
+        select_state = self.hass.states.get(self._select_entity_id)
+        if not select_state:
             return None
-
-        return target_state
+        
+        # Prüfe ob Multi-Select aktiv ist
+        allow_multiple = select_state.attributes.get("allow_multiple", False)
+        
+        if not allow_multiple:
+            # Single-Select: Wie bisher, nur ein Entity
+            target_state = self.hass.states.get(self._selected_entity_id)
+            if not target_state or target_state.state in ("unknown", "unavailable"):
+                return None
+            return target_state
+        
+        else:
+            # Multi-Select: Behandle alle ausgewählten Entities
+            selected_entity_ids = getattr(self, '_selected_entity_ids', [])
+            
+            if not selected_entity_ids:
+                return None
+            
+            # Unterscheide zwischen BinarySensor und normalem Sensor
+            is_binary = self._detect_platform() == "binary_sensor"
+            
+            if is_binary:
+                # BinarySensor (Window): Wenn EINER offen ist → offen
+                for entity_id in selected_entity_ids:
+                    state = self.hass.states.get(entity_id)
+                    if state and state.state not in ("unknown", "unavailable"):
+                        if state.state in (STATE_ON, "open"):
+                            # Mindestens einer ist offen → return diesen State
+                            return state
+                
+                # Alle geschlossen → return letzten State als "closed"
+                last_state = self.hass.states.get(selected_entity_ids[-1])
+                return last_state if last_state else None
+            
+            else:
+                # Sensor (Temperature/Humidity): Durchschnitt berechnen
+                valid_values = []
+                last_valid_state = None
+                
+                for entity_id in selected_entity_ids:
+                    state = self.hass.states.get(entity_id)
+                    if state and state.state not in ("unknown", "unavailable"):
+                        try:
+                            value = float(state.state)
+                            valid_values.append(value)
+                            last_valid_state = state
+                        except (ValueError, TypeError):
+                            continue
+                
+                if not valid_values or not last_valid_state:
+                    return None
+                
+                # Berechne Durchschnitt
+                average = sum(valid_values) / len(valid_values)
+                
+                # Erstelle einen "virtuellen" State-Objekt mit Durchschnittswert
+                # Kopiere Attribute vom letzten validen State
+                from types import SimpleNamespace
+                
+                virtual_state = SimpleNamespace(
+                    state=str(round(average, 1)),
+                    attributes=last_valid_state.attributes.copy(),
+                    entity_id=self._select_entity_id  # Referenz zum Select
+                )
+                
+                return virtual_state
